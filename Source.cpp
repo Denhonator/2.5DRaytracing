@@ -1,14 +1,19 @@
 #include <iostream>
 #include "Resources.h"
+#include <math.h>
 
 sf::Vector2f lineLineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C, sf::Vector2f D);
 float vectorAngle(sf::Vector2f a);
 float vectorAngle(float x, float y);
+float distanceS(sf::Vector2f a);
 
 int main()
 {
+	unsigned int width = 1920;
+	unsigned int height = 1080;
+	float FOV = 70;
 	Resources res;
-	sf::RenderWindow window(sf::VideoMode(1920, 1080), "Rays");
+	sf::RenderWindow window(sf::VideoMode(width, height), "Rays");
 	window.setVerticalSyncEnabled(true);
 	sf::View mapView = sf::View(sf::Vector2f(0, 0), sf::Vector2f(1920, 1080));
 	window.setView(mapView);
@@ -17,12 +22,16 @@ int main()
 	map.setPrimitiveType(sf::PrimitiveType::Lines);
 
 	map.append(sf::Vertex(sf::Vector2f(0, 0)));
-	map.append(sf::Vertex(sf::Vector2f(60, 0)));
+	map.append(sf::Vertex(sf::Vector2f(300, 0)));
+
+	map.append(sf::Vertex(sf::Vector2f(0, 100)));
+	map.append(sf::Vertex(sf::Vector2f(300, 500)));
+
+	map.append(sf::Vertex(sf::Vector2f(-400, -100)));
+	map.append(sf::Vertex(sf::Vector2f(0, 0)));
 
 	sf::VertexArray playerForward;
 	playerForward.setPrimitiveType(sf::PrimitiveType::Lines);
-	playerForward.append(sf::Vertex());
-	playerForward.append(sf::Vertex());
 
 	sf::Sprite player;
 	player.setTexture(*res.GetTexture("player.png"));
@@ -63,13 +72,22 @@ int main()
 		rotation.y = std::sin((player.getRotation()+90) / 180 * 3.14f);
 		player.move(sf::Vector2f(rotation.x * move.y + move.x * rotation.y, rotation.y * move.y - move.x * rotation.x));
 
-		playerForward[0].position = player.getPosition();
-		playerForward[1].position = player.getPosition() - sf::Vector2f(rotation.x * 300, rotation.y * 300);
+		playerForward.clear();
 
-		sf::Vector2f intersection = lineLineIntersection(playerForward[0].position, playerForward[1].position, map[0].position, map[1].position);
-		playerForward[1].position = intersection;
-		if (playerForward[1].position.x == FLT_MAX)
-			playerForward[1].position = playerForward[0].position;
+		for (unsigned int i = 0; i < width; i++) {
+			float rayAngle = player.getRotation() - FOV / 2 + FOV * ((float)i / (float)width) + 90;
+			rotation.x = -std::cos((rayAngle) / 180 * 3.14f);
+			rotation.y = -std::sin((rayAngle) / 180 * 3.14f);
+
+			for (unsigned int j = 0; j < map.getVertexCount(); j+=2) {
+				sf::Vector2f intersection = lineLineIntersection(player.getPosition(), player.getPosition() + rotation * 100.0f, map[j].position, map[j+1].position);
+				if (intersection.x != FLT_MAX) {
+					playerForward.append(player.getPosition());
+					playerForward.append(intersection);
+					break;
+				}
+			}
+		}
 
 		/*if (move.x != 0 || move.y != 0) {
 			player.setRotation(std::atan2(move.y, move.x)*180/3.14f+90);
@@ -132,6 +150,10 @@ float vectorAngle(float x, float y) {
 		return angle + 360;
 	return angle;
 }
+float distanceS(sf::Vector2f a) {
+	return a.x * a.x + a.y * a.y;
+}
+
 
 //float vectorAngle(sf::Vector2f a, sf::Vector2f b) {
 //	return atan2(a.x * b.y - a.y * b.x, a.x * b.y + a.y * b.y);
