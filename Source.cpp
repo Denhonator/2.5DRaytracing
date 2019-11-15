@@ -2,7 +2,9 @@
 #include "Resources.h"
 #include <math.h>
 
-sf::Vector2f lineLineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C, sf::Vector2f D);
+float constexpr eps = 0.0001f;
+
+sf::Vector2f LineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C, sf::Vector2f D);
 float vectorAngle(sf::Vector2f a);
 float vectorAngle(float x, float y);
 float distanceS(sf::Vector2f a);
@@ -12,23 +14,31 @@ int main()
 	unsigned int width = 1920;
 	unsigned int height = 1080;
 	float FOV = 70;
+	bool mapToggle = true;
 	Resources res;
 	sf::RenderWindow window(sf::VideoMode(width, height), "Rays");
 	window.setVerticalSyncEnabled(true);
 	sf::View mapView = sf::View(sf::Vector2f(0, 0), sf::Vector2f(1920, 1080));
+	sf::View FPView = sf::View(sf::FloatRect(0, 0, width, height));
 	window.setView(mapView);
+
+	sf::VertexArray FP;
+	FP.setPrimitiveType(sf::PrimitiveType::Lines);
 
 	sf::VertexArray map;
 	map.setPrimitiveType(sf::PrimitiveType::Lines);
 
-	map.append(sf::Vertex(sf::Vector2f(0, 0)));
-	map.append(sf::Vertex(sf::Vector2f(300, 0)));
+	map.append(sf::Vertex(sf::Vector2f(-150, -150)));
+	map.append(sf::Vertex(sf::Vector2f(150, -150)));
 
-	map.append(sf::Vertex(sf::Vector2f(0, 100)));
-	map.append(sf::Vertex(sf::Vector2f(300, 500)));
+	map.append(sf::Vertex(sf::Vector2f(150, -150)));
+	map.append(sf::Vertex(sf::Vector2f(150, 150)));
 
-	map.append(sf::Vertex(sf::Vector2f(-400, -100)));
-	map.append(sf::Vertex(sf::Vector2f(0, 0)));
+	map.append(sf::Vertex(sf::Vector2f(150, 150)));
+	map.append(sf::Vertex(sf::Vector2f(-150, 150)));
+
+	map.append(sf::Vertex(sf::Vector2f(-150, 150)));
+	map.append(sf::Vertex(sf::Vector2f(-150, -150)));
 
 	sf::VertexArray playerForward;
 	playerForward.setPrimitiveType(sf::PrimitiveType::Lines);
@@ -38,7 +48,7 @@ int main()
 	player.setOrigin(player.getTexture()->getSize().x / 2, player.getTexture()->getSize().y / 2);
 	sf::Vector2f move;
 	sf::Vector2f rotation;
-	float playerSpeed = 3;
+	float playerSpeed = 1;
 
 	while (window.isOpen())
 	{
@@ -47,6 +57,12 @@ int main()
 		{
 			if (event.type == sf::Event::Closed)
 				window.close();
+			if (event.type == sf::Event::KeyPressed) {
+				if (event.key.code == sf::Keyboard::Tab) {
+					mapToggle = !mapToggle;
+					window.setView(mapToggle ? mapView : FPView);
+				}
+			}
 		}
 
 		move = sf::Vector2f(0, 0);
@@ -73,37 +89,52 @@ int main()
 		player.move(sf::Vector2f(rotation.x * move.y + move.x * rotation.y, rotation.y * move.y - move.x * rotation.x));
 
 		playerForward.clear();
+		FP.clear();
 
 		for (unsigned int i = 0; i < width; i++) {
 			float rayAngle = player.getRotation() - FOV / 2 + FOV * ((float)i / (float)width) + 90;
 			rotation.x = -std::cos((rayAngle) / 180 * 3.14f);
 			rotation.y = -std::sin((rayAngle) / 180 * 3.14f);
 
+			sf::Vector2f intersection = sf::Vector2f(FLT_MAX,FLT_MAX);
+			sf::Vector2f test;
+			float distS = FLT_MAX;
 			for (unsigned int j = 0; j < map.getVertexCount(); j+=2) {
-				sf::Vector2f intersection = lineLineIntersection(player.getPosition(), player.getPosition() + rotation * 100.0f, map[j].position, map[j+1].position);
-				if (intersection.x != FLT_MAX) {
-					playerForward.append(player.getPosition());
-					playerForward.append(intersection);
-					break;
+				test = LineIntersection(player.getPosition(), player.getPosition() + rotation * 400.0f, map[j].position, map[j + 1].position);
+				if (test.x != FLT_MAX) {
+					float distTest = distanceS(test - player.getPosition());
+					if (distTest < distS) {
+						intersection = test;
+						distS = distTest;
+					}
 				}
+			}
+			if (intersection.x != FLT_MAX) {
+				playerForward.append(player.getPosition());
+				playerForward.append(intersection);
+				float dist = std::sqrt(distS);
+				float wallHeight = 15 * height / dist;
+				float b = std::min(255.0f, 3000 / dist);
+				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Color(b, b, b, 255)));
+				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Color(b, b, b, 255)));
 			}
 		}
 
-		/*if (move.x != 0 || move.y != 0) {
-			player.setRotation(std::atan2(move.y, move.x)*180/3.14f+90);
-		}*/
-
 		window.clear();
-		window.draw(map);
-		window.draw(player);
-		window.draw(playerForward);
+		if (mapToggle) {
+			window.draw(map);
+			window.draw(player);
+			window.draw(playerForward);
+		}
+		else
+			window.draw(FP);
 		window.display();
 	}
 
 	return 0;
 }
 
-sf::Vector2f lineLineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C, sf::Vector2f D)
+sf::Vector2f LineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C, sf::Vector2f D)
 {
 	// Line AB represented as a1x + b1y = c1 
 	float a1 = B.y - A.y;
@@ -125,8 +156,8 @@ sf::Vector2f lineLineIntersection(sf::Vector2f A, sf::Vector2f B, sf::Vector2f C
 	{
 		float x = (b2 * c1 - b1 * c2) / determinant;
 		float y = (a1 * c2 - a2 * c1) / determinant;
-		if ((((x >= A.x && x <= B.x) || (x <= A.x && x >= B.x)) && ((x >= C.x && x <= D.x) || (x <= C.x && x >= D.x))) &&		//Only return points between the points in the given lines
-			(((y >= A.y && y <= B.y) || (y <= A.y && y >= B.y)) && ((y >= C.y && y <= D.y) || (y <= C.y && y >= D.y)))) {
+		if ((((x - A.x >= -eps && x - B.x <= eps) || (x - A.x <= eps && x - B.x >= -eps)) && ((x - C.x >= -eps && x - D.x <= eps) || (x - C.x <= eps && x - D.x >= -eps))) &&		//Only return points between the points in the given lines
+			(((y - A.y >= -eps && y - B.y <= eps) || (y - A.y <= eps && y - B.y >= -eps)) && ((y - C.y >= -eps && y - D.y <= eps) || (y - C.y <= eps && y - D.y >= -eps)))) {
 			return sf::Vector2f(x, y);
 		}
 		return sf::Vector2f(FLT_MAX, FLT_MAX);
