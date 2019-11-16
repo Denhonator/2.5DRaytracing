@@ -40,6 +40,12 @@ int main()
 	map.append(sf::Vertex(sf::Vector2f(-150, 150)));
 	map.append(sf::Vertex(sf::Vector2f(-150, -150)));
 
+	std::vector<Light> lights;
+	lights.push_back(Light{ sf::Vector2f(120, 120), 1.0f });
+	lights.push_back(Light{ sf::Vector2f(-120, 120), 1.0f });
+	lights.push_back(Light{ sf::Vector2f(120, -120), 1.0f });
+	lights.push_back(Light{ sf::Vector2f(-120, -120), 1.0f });
+
 	sf::VertexArray playerForward;
 	playerForward.setPrimitiveType(sf::PrimitiveType::Lines);
 
@@ -49,6 +55,23 @@ int main()
 	sf::Vector2f move;
 	sf::Vector2f rotation;
 	float playerSpeed = 1;
+
+	sf::Sprite floor, ceiling;
+	floor.setTexture(*res.GetTexture("floor.png"));
+	floor.setTextureRect(sf::IntRect(0, 0, width*1.2f, width*1.2f));
+	floor.setOrigin(floor.getLocalBounds().width / 2, floor.getLocalBounds().height / 2);
+	floor.setPosition(width/2, 8 * height / 10);
+	ceiling.setTexture(*res.GetTexture("ceiling.png"));
+	ceiling.setTextureRect(sf::IntRect(0, 0, width * 1.2f, width * 1.2f));
+	ceiling.setOrigin(ceiling.getLocalBounds().width / 2, ceiling.getLocalBounds().height / 2);
+	ceiling.setPosition(width / 2, 2 * height / 10);
+	sf::Shader floorShader, ceilingShader;
+	floorShader.loadFromFile("floor.shader", sf::Shader::Fragment);
+	ceilingShader.loadFromFile("ceiling.shader", sf::Shader::Fragment);
+	floorShader.setUniform("texture", sf::Shader::CurrentTexture);
+	ceilingShader.setUniform("texture", sf::Shader::CurrentTexture);
+	floorShader.setUniform("tiling", sf::Vector2f(0.3f, 0.3f));
+	ceilingShader.setUniform("tiling", sf::Vector2f(0.3f, 0.3f));
 
 	while (window.isOpen())
 	{
@@ -114,7 +137,21 @@ int main()
 				playerForward.append(intersection);
 				float dist = std::sqrt(distS);
 				float wallHeight = 15 * height / dist;
-				float b = std::min(255.0f, 3000 / dist);
+
+				float b = 255.0f / dist;
+				bool colTest = true;
+				for (unsigned int l = 0; l < lights.size(); l++) {
+					float lightDistS = distanceS(lights.at(l).pos - intersection);
+					for (unsigned int j = 0; j < map.getVertexCount(); j += 2) {
+						test = LineIntersection(intersection, lights.at(l).pos, map[j].position, map[j + 1].position);
+						if (test.x != FLT_MAX && distanceS(test - intersection) < lightDistS) {
+							colTest = false;
+							break;
+						}
+					}
+					b += 10000 * lights.at(l).strength / lightDistS;
+				}
+				b = std::min(255.0f, b);
 				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Color(b, b, b, 255)));
 				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Color(b, b, b, 255)));
 			}
@@ -126,8 +163,16 @@ int main()
 			window.draw(player);
 			window.draw(playerForward);
 		}
-		else
+		else {
+			floor.setRotation(-player.getRotation());
+			ceiling.setRotation(-player.getRotation());
+			floorShader.setUniform("offset", player.getPosition());
+			ceilingShader.setUniform("offset", player.getPosition());
+			//floorShader.setUniform("rotation", rotation);
+			window.draw(floor, &floorShader);
+			window.draw(ceiling, &ceilingShader);
 			window.draw(FP);
+		}
 		window.display();
 	}
 
