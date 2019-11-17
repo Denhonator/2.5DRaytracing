@@ -57,13 +57,10 @@ int main()
 
 	sf::Sprite floor, ceiling;
 	floor.setTexture(*res.GetTexture("floor.png"));
-	floor.setTextureRect(sf::IntRect(0, 0, width, 4*height/10));
-	floor.setOrigin(floor.getLocalBounds().width / 2, floor.getLocalBounds().height / 2);
-	floor.setPosition(width/2, 8 * height / 10);
+	floor.setTextureRect(sf::IntRect(0, 0, width, height / 2));
+	floor.setPosition(0, height / 2);
 	ceiling.setTexture(*res.GetTexture("ceiling.png"));
-	ceiling.setTextureRect(sf::IntRect(0, 0, width, 4 * height / 10));
-	ceiling.setOrigin(ceiling.getLocalBounds().width / 2, ceiling.getLocalBounds().height / 2);
-	ceiling.setPosition(width / 2, 2 * height / 10);
+	ceiling.setTextureRect(sf::IntRect(0, 0, width, height / 2));
 	sf::Shader floorShader, ceilingShader;
 	floorShader.loadFromFile("floor.shader", sf::Shader::Fragment);
 	ceilingShader.loadFromFile("ceiling.shader", sf::Shader::Fragment);
@@ -135,7 +132,7 @@ int main()
 				playerForward.append(player.getPosition());
 				playerForward.append(intersection);
 				float dist = std::sqrt(distS);
-				float wallHeight = 15 * height / dist;
+				float wallHeight = 25.7f * height / dist;
 
 				float b = 255.0f / dist;
 				bool colTest = true;
