@@ -1,4 +1,3 @@
-#include <iostream>
 #include "Resources.h"
 #include <math.h>
 
@@ -58,11 +57,11 @@ int main()
 
 	sf::Sprite floor, ceiling;
 	floor.setTexture(*res.GetTexture("floor.png"));
-	floor.setTextureRect(sf::IntRect(0, 0, width*1.2f, width*1.2f));
+	floor.setTextureRect(sf::IntRect(0, 0, width, 4*height/10));
 	floor.setOrigin(floor.getLocalBounds().width / 2, floor.getLocalBounds().height / 2);
 	floor.setPosition(width/2, 8 * height / 10);
 	ceiling.setTexture(*res.GetTexture("ceiling.png"));
-	ceiling.setTextureRect(sf::IntRect(0, 0, width * 1.2f, width * 1.2f));
+	ceiling.setTextureRect(sf::IntRect(0, 0, width, 4 * height / 10));
 	ceiling.setOrigin(ceiling.getLocalBounds().width / 2, ceiling.getLocalBounds().height / 2);
 	ceiling.setPosition(width / 2, 2 * height / 10);
 	sf::Shader floorShader, ceilingShader;
@@ -116,8 +115,8 @@ int main()
 
 		for (unsigned int i = 0; i < width; i++) {
 			float rayAngle = player.getRotation() - FOV / 2 + FOV * ((float)i / (float)width) + 90;
-			rotation.x = -std::cos((rayAngle) / 180 * 3.14f);
-			rotation.y = -std::sin((rayAngle) / 180 * 3.14f);
+			rotation.x = -std::cos(rayAngle / 180 * 3.14f);
+			rotation.y = -std::sin(rayAngle / 180 * 3.14f);
 
 			sf::Vector2f intersection = sf::Vector2f(FLT_MAX,FLT_MAX);
 			sf::Vector2f test;
@@ -164,11 +163,12 @@ int main()
 			window.draw(playerForward);
 		}
 		else {
-			floor.setRotation(-player.getRotation());
-			ceiling.setRotation(-player.getRotation());
+			//floor.setRotation(-player.getRotation());
+			//ceiling.setRotation(-player.getRotation());
 			floorShader.setUniform("offset", player.getPosition());
 			ceilingShader.setUniform("offset", player.getPosition());
-			//floorShader.setUniform("rotation", rotation);
+			floorShader.setUniform("angle", player.getRotation() + 90);
+			ceilingShader.setUniform("angle", player.getRotation() + 90);
 			window.draw(floor, &floorShader);
 			window.draw(ceiling, &ceilingShader);
 			window.draw(FP);

@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <unordered_map>
+#include <iostream>
 
 struct Light {
 	sf::Vector2f pos = sf::Vector2f(0, 0);
