@@ -117,6 +117,7 @@ int main()
 
 			sf::Vector2f intersection = sf::Vector2f(FLT_MAX,FLT_MAX);
 			sf::Vector2f test;
+			unsigned int wallIndex = 0;
 			float distS = FLT_MAX;
 			for (unsigned int j = 0; j < map.getVertexCount(); j+=2) {
 				test = LineIntersection(player.getPosition(), player.getPosition() + rotation * 400.0f, map[j].position, map[j + 1].position);
@@ -125,6 +126,7 @@ int main()
 					if (distTest < distS) {
 						intersection = test;
 						distS = distTest;
+						wallIndex = j;
 					}
 				}
 			}
@@ -145,11 +147,13 @@ int main()
 							break;
 						}
 					}
-					b += 10000 * lights.at(l).strength / lightDistS;
+					b += 25500 * lights.at(l).strength / lightDistS;
 				}
 				b = std::min(255.0f, b);
-				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Color(b, b, b, 255)));
-				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Color(b, b, b, 255)));
+				float pointPos = std::sqrt(distanceS(map[wallIndex].position - intersection));
+				float texX = pointPos * 3;
+				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Color(b, b, b, 255), sf::Vector2f(texX,0)));
+				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Color(b, b, b, 255), sf::Vector2f(texX,64)));
 			}
 		}
 
@@ -168,7 +172,7 @@ int main()
 			ceilingShader.setUniform("angle", player.getRotation() + 90);
 			window.draw(floor, &floorShader);
 			window.draw(ceiling, &ceilingShader);
-			window.draw(FP);
+			window.draw(FP, res.GetTexture("wall.png"));
 		}
 		window.display();
 	}

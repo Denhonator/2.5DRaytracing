@@ -29,7 +29,7 @@ void main()
 	for (int i = 0; i < 4; i++) {
 		toLight = (offset + dist * rotation * 20) - lights[i].pos;
 		ldistS = toLight.x * toLight.x + toLight.y * toLight.y + 1000;
-		b += 1000.0 / ldistS;
+		b += lights[i].strength * 1000.0 / ldistS;
 	}
 	pixel *= b;
 
