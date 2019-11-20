@@ -17,12 +17,21 @@ int main()
 	Resources res;
 	sf::RenderWindow window(sf::VideoMode(width, height), "Rays");
 	window.setVerticalSyncEnabled(true);
+	window.setFramerateLimit(55);
 	sf::View mapView = sf::View(sf::Vector2f(0, 0), sf::Vector2f(1920, 1080));
 	sf::View FPView = sf::View(sf::FloatRect(0, 0, width, height));
 	window.setView(mapView);
 
 	sf::VertexArray FP;
 	FP.setPrimitiveType(sf::PrimitiveType::Quads);
+	sf::Shader floorShader, ceilingShader, wallShader;
+	wallShader.loadFromFile("wall.shader", sf::Shader::Fragment);
+	wallShader.setUniform("texture", sf::Shader::CurrentTexture);
+	sf::RenderStates FPState;
+	FPState.texture = res.GetTexture("wall.png");
+	FPState.shader = &wallShader;
+
+	sf::Vector2f xToPos[980];
 
 	sf::VertexArray map;
 	map.setPrimitiveType(sf::PrimitiveType::Lines);
@@ -61,7 +70,6 @@ int main()
 	floor.setPosition(0, height / 2);
 	ceiling.setTexture(*res.GetTexture("ceiling.png"));
 	ceiling.setTextureRect(sf::IntRect(0, 0, width, height / 2));
-	sf::Shader floorShader, ceilingShader;
 	floorShader.loadFromFile("floor.shader", sf::Shader::Fragment);
 	ceilingShader.loadFromFile("ceiling.shader", sf::Shader::Fragment);
 	floorShader.setUniform("texture", sf::Shader::CurrentTexture);
@@ -127,7 +135,7 @@ int main()
 				sf::Vector2f test = LineIntersection(player.getPosition(), player.getPosition() + rotation * 500.0f, map[j].position, map[j + 1].position);
 				if (test.x != FLT_MAX) {
 					float distTest = distanceS(test - player.getPosition());
-					if (distTest < distS) {
+					if (distTest < distS && distTest>0) {
 						intersection = test;
 						distS = distTest;
 						wallIndex = j;
@@ -135,7 +143,10 @@ int main()
 				}
 			}
 
-			if (i + 1 == width) {
+			if(!(i%2))
+				xToPos[i/2] = intersection;
+
+			if (i + 1 == width && FP.getVertexCount()>0 && wallIndex<map.getVertexCount()) {
 				playerForward.append(player.getPosition());
 				playerForward.append(intersection);
 
@@ -147,7 +158,7 @@ int main()
 				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Vector2f(texX, 64)));
 				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Vector2f(texX, 0)));
 			}
-			else if (wallIndex != previousWall || std::abs(FP[FP.getVertexCount()-1].position.x-i)>10) {
+			else if (wallIndex != previousWall || (FP.getVertexCount()>0 && std::abs(FP[FP.getVertexCount()-1].position.x-i)>10)) {
 				if (previousDistS != FLT_MAX) {
 					float prevDist = std::sqrt(previousDistS);
 					float prevWallHeight = 25.7f * height / prevDist;
@@ -182,15 +193,14 @@ int main()
 			window.draw(playerForward);
 		}
 		else {
-			//floor.setRotation(-player.getRotation());
-			//ceiling.setRotation(-player.getRotation());
 			floorShader.setUniform("offset", player.getPosition());
 			ceilingShader.setUniform("offset", player.getPosition());
 			floorShader.setUniform("angle", player.getRotation() + 90);
 			ceilingShader.setUniform("angle", player.getRotation() + 90);
+			wallShader.setUniformArray("pos", xToPos, 960);
 			window.draw(floor, &floorShader);
 			window.draw(ceiling, &ceilingShader);
-			window.draw(FP, res.GetTexture("wall.png"));
+			window.draw(FP, FPState);
 		}
 		window.display();
 	}

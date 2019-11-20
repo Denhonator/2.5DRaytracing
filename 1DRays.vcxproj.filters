@@ -34,5 +34,8 @@
     <None Include="floor.shader">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="wall.shader">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
