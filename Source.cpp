@@ -22,7 +22,7 @@ int main()
 	window.setView(mapView);
 
 	sf::VertexArray FP;
-	FP.setPrimitiveType(sf::PrimitiveType::Lines);
+	FP.setPrimitiveType(sf::PrimitiveType::Quads);
 
 	sf::VertexArray map;
 	map.setPrimitiveType(sf::PrimitiveType::Lines);
@@ -110,17 +110,21 @@ int main()
 		playerForward.clear();
 		FP.clear();
 
+		unsigned int previousWall = UINT32_MAX;
+		float previousDistS = FLT_MAX;
+		sf::Vector2f previousIntersection = sf::Vector2f(FLT_MAX, FLT_MAX);
+
 		for (unsigned int i = 0; i < width; i++) {
 			float rayAngle = player.getRotation() - FOV / 2 + FOV * ((float)i / (float)width) + 90;
 			rotation.x = -std::cos(rayAngle / 180 * 3.14f);
 			rotation.y = -std::sin(rayAngle / 180 * 3.14f);
 
-			sf::Vector2f intersection = sf::Vector2f(FLT_MAX,FLT_MAX);
-			sf::Vector2f test;
-			unsigned int wallIndex = 0;
+			sf::Vector2f intersection = sf::Vector2f(FLT_MAX, FLT_MAX);
+			unsigned int wallIndex = UINT32_MAX;
 			float distS = FLT_MAX;
+
 			for (unsigned int j = 0; j < map.getVertexCount(); j+=2) {
-				test = LineIntersection(player.getPosition(), player.getPosition() + rotation * 400.0f, map[j].position, map[j + 1].position);
+				sf::Vector2f test = LineIntersection(player.getPosition(), player.getPosition() + rotation * 500.0f, map[j].position, map[j + 1].position);
 				if (test.x != FLT_MAX) {
 					float distTest = distanceS(test - player.getPosition());
 					if (distTest < distS) {
@@ -130,31 +134,45 @@ int main()
 					}
 				}
 			}
-			if (intersection.x != FLT_MAX) {
+
+			if (i + 1 == width) {
 				playerForward.append(player.getPosition());
 				playerForward.append(intersection);
+
 				float dist = std::sqrt(distS);
 				float wallHeight = 25.7f * height / dist;
-
-				float b = 255.0f / dist;
-				bool colTest = true;
-				for (unsigned int l = 0; l < lights.size(); l++) {
-					float lightDistS = distanceS(lights.at(l).pos - intersection);
-					for (unsigned int j = 0; j < map.getVertexCount(); j += 2) {
-						test = LineIntersection(intersection, lights.at(l).pos, map[j].position, map[j + 1].position);
-						if (test.x != FLT_MAX && distanceS(test - intersection) < lightDistS) {
-							colTest = false;
-							break;
-						}
-					}
-					b += 25500 * lights.at(l).strength / lightDistS;
-				}
-				b = std::min(255.0f, b);
 				float pointPos = std::sqrt(distanceS(map[wallIndex].position - intersection));
 				float texX = pointPos * 3;
-				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Color(b, b, b, 255), sf::Vector2f(texX,0)));
-				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Color(b, b, b, 255), sf::Vector2f(texX,64)));
+
+				FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Vector2f(texX, 64)));
+				FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Vector2f(texX, 0)));
 			}
+			else if (wallIndex != previousWall || std::abs(FP[FP.getVertexCount()-1].position.x-i)>10) {
+				if (previousDistS != FLT_MAX) {
+					float prevDist = std::sqrt(previousDistS);
+					float prevWallHeight = 25.7f * height / prevDist;
+					float prevPointPos = std::sqrt(distanceS(map[previousWall].position - previousIntersection));
+					float prevTexX = prevPointPos * 3;
+
+					FP.append(sf::Vertex(sf::Vector2f(i, (height + prevWallHeight) / 2), sf::Vector2f(prevTexX, 64)));
+					FP.append(sf::Vertex(sf::Vector2f(i, (height - prevWallHeight) / 2), sf::Vector2f(prevTexX, 0)));
+				}
+				if (distS != FLT_MAX) {
+					playerForward.append(player.getPosition());
+					playerForward.append(intersection);
+
+					float dist = std::sqrt(distS);
+					float wallHeight = 25.7f * height / dist;		//Needs to be scaled to match floors and ceiling
+					float pointPos = std::sqrt(distanceS(map[wallIndex].position - intersection));
+					float texX = pointPos * 3;
+
+					FP.append(sf::Vertex(sf::Vector2f(i, (height - wallHeight) / 2), sf::Vector2f(texX, 0)));
+					FP.append(sf::Vertex(sf::Vector2f(i, (height + wallHeight) / 2), sf::Vector2f(texX, 64)));
+				}
+			}
+			previousIntersection = intersection;
+			previousDistS = distS;
+			previousWall = wallIndex;
 		}
 
 		window.clear();
